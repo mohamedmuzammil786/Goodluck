@@ -99,7 +99,7 @@ export default function App() {
     <>
       <header>
         <div className="bar">
-          <div className="logo">Stride<i>house</i></div>
+          <div className="logo">Good<i>luck</i></div>
           <div className="search">
             <input type="search" value={q} onChange={(e) => setQ(e.target.value)}
               placeholder="Search for sneakers, brands and more" aria-label="Search shoes" />
