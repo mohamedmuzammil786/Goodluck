@@ -1,4 +1,4 @@
-# Stridehouse Shop
+# Goodluck
 
 Run:
     npm install
