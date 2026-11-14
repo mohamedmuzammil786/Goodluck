@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { products, inr, off } from './data.js'
 import Shoe from './Shoe.jsx'
-
+const API_URL = import.meta.env.VITE_API_URL;
 const cats = ['All', ...new Set(products.map((p) => p.cat))]
 const brands = [...new Set(products.map((p) => p.brand))]
 const SIZES = [6, 7, 8, 9, 10, 11]
@@ -149,7 +149,7 @@ export default function App() {
 
       // Send cart details to backend
       const response = await fetch(
-        "http://localhost:5000/api/payment/create-order",
+        `${API_URL}/api/payment/create-order`,
         {
           method: "POST",
           headers: {
@@ -198,7 +198,7 @@ export default function App() {
         handler: async function (paymentResponse) {
           try {
             const verifyResponse = await fetch(
-              "http://localhost:5000/api/payment/verify-payment",
+              `${API_URL}/api/payment/verify-payment`,
               {
                 method: "POST",
                 headers: {
