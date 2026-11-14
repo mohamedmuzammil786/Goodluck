@@ -5,6 +5,22 @@ import Shoe from './Shoe.jsx'
 const cats = ['All', ...new Set(products.map((p) => p.cat))]
 const brands = [...new Set(products.map((p) => p.brand))]
 const SIZES = [6, 7, 8, 9, 10, 11]
+const loadRazorpay = () => {
+  return new Promise((resolve) => {
+    if (window.Razorpay) {
+      resolve(true);
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+
+    document.body.appendChild(script);
+  });
+};
 
 export default function App() {
   const [cat, setCat] = useState('All')
@@ -19,6 +35,14 @@ export default function App() {
   const [size, setSize] = useState(null)
   const [drawer, setDrawer] = useState(false)
   const [toast, setToast] = useState('')
+  const [customer, setCustomer] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    address: ""
+  });
+
+  const [paying, setPaying] = useState(false);
 
   useEffect(() => {
     if (!toast) return
@@ -90,10 +114,142 @@ export default function App() {
     else setToast('Added to cart')
   }
   const openProduct = (id) => { setSize(null); setSelId(id) }
-  const checkout = () => {
-    if (!count) return setToast('Your cart is empty')
-    setCart({}); closeAll(); setToast('Order placed. Thank you!')
-  }
+  
+  
+  const checkout = async () => {
+    if (!count) {
+      return setToast("Your cart is empty");
+    }
+
+    if (
+      !customer.name.trim() ||
+      !customer.email.trim() ||
+      !customer.phone.trim() ||
+      !customer.address.trim()
+    ) {
+      return setToast("Please enter all customer details");
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customer.email)) {
+      return setToast("Enter a valid email address");
+    }
+
+    if (!/^[6-9]\d{9}$/.test(customer.phone)) {
+      return setToast("Enter a valid 10-digit Indian phone number");
+    }
+
+    try {
+      setPaying(true);
+
+      const loaded = await loadRazorpay();
+
+      if (!loaded) {
+        throw new Error("Unable to load Razorpay checkout");
+      }
+
+      // Send cart details to backend
+      const response = await fetch(
+        "http://localhost:5000/api/payment/create-order",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            items: cartRows.map(([key, item]) => ({
+              productId: String(item.id),
+              quantity: item.q,
+              size: item.s
+            })),
+            customer
+          })
+        }
+      );
+
+      const orderData = await response.json();
+
+      if (!response.ok || !orderData.success) {
+        throw new Error(orderData.message || "Unable to create order");
+      }
+
+      // Razorpay checkout configuration
+      const options = {
+        key: orderData.keyId,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: "Goodluck Shoemart",
+        description: "Purchase of footwear",
+        order_id: orderData.razorpayOrderId,
+
+        prefill: {
+          name: customer.name,
+          email: customer.email,
+          contact: customer.phone
+        },
+
+        notes: {
+          address: customer.address
+        },
+
+        theme: {
+          color: "#2f5bea"
+        },
+
+        handler: async function (paymentResponse) {
+          try {
+            const verifyResponse = await fetch(
+              "http://localhost:5000/api/payment/verify-payment",
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json"
+                },
+                body: JSON.stringify(paymentResponse)
+              }
+            );
+
+            const verifyData = await verifyResponse.json();
+
+            if (!verifyResponse.ok || !verifyData.success) {
+              throw new Error(
+                verifyData.message || "Payment verification failed"
+              );
+            }
+
+            setCart({});
+            setCustomer({
+              name: "",
+              email: "",
+              phone: "",
+              address: ""
+            });
+
+            closeAll();
+            setToast("Payment successful! Order confirmed.");
+
+          } catch (error) {
+            console.error("Verification error:", error);
+            setToast(error.message || "Payment verification failed");
+          }
+        },
+
+        modal: {
+          ondismiss: function () {
+            setToast("Payment window closed");
+          }
+        }
+      };
+
+      const razorpay = new window.Razorpay(options);
+      razorpay.open();
+
+    } catch (error) {
+      console.error("Checkout error:", error);
+      setToast(error.message || "Unable to process checkout");
+    } finally {
+      setPaying(false);
+    }
+  };
 
   return (
     <>
@@ -213,8 +369,54 @@ export default function App() {
           })}
         </div>
         <div className="foot">
-          <div className="sum"><span>Total</span><span>{inr(total)}</span></div>
-          <button className="cta" onClick={checkout}>Place order</button>
+          <h4>Delivery Details</h4>
+          <input
+            type="text"
+            placeholder="Full Name"
+            value={customer.name}
+            onChange={(e) =>
+              setCustomer({ ...customer, name: e.target.value })
+            }
+          />
+
+          <input
+            type="email"
+            placeholder="Email Address"
+            value={customer.email}
+            onChange={(e) =>
+              setCustomer({ ...customer, email: e.target.value })
+            }
+          />
+
+          <input
+            type="tel"
+            placeholder="10-digit Mobile Number"
+            value={customer.phone}
+            onChange={(e) =>
+              setCustomer({ ...customer, phone: e.target.value })
+            }
+          />
+
+          <textarea
+            placeholder="Complete Delivery Address"
+            value={customer.address}
+            onChange={(e) =>
+              setCustomer({ ...customer, address: e.target.value })
+            }
+          />
+
+          <div className="sum">
+            <span>Total</span>
+            <span>{inr(total)}</span>
+          </div>
+
+          <button
+            className="cta"
+            onClick={checkout}
+            disabled={paying}
+          >
+            {paying ? "Processing..." : "Proceed to Payment"}
+          </button>
         </div>
       </div>
 

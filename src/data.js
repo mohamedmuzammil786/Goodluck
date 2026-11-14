@@ -11,7 +11,7 @@ const rows = [
   ['Sprint Pro X', 'Lunar', 'Running', 6999, 9999, 4.6, 1340, '#d83a52', '#12172b'],
   ['Retro 86', 'Stridehouse', 'Sneakers', 3999, 5499, 4.4, 2750, '#e9d8a6', '#2f5bea'],
   ['Summit GTX', 'Ridgeline', 'Boots', 9499, 13499, 4.7, 520, '#2f4a3a', '#f2b230'],
-  ['Slip-on Breeze', 'Nimbus', 'Sneakers', 1999, 2999, 4.1, 6400, '#9fb4ff', '#ffffff'],
+  ['Slip-on Breeze', 'Nimbus', 'Sneakers', 1, 2999, 4.1, 6400, '#9fb4ff', '#ffffff'],
 ]
 
 export const products = rows.map((a, id) => ({
