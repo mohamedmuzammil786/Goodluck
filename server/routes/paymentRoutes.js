@@ -1,5 +1,5 @@
 const crypto = require("crypto");
-const Order = require("../models/Order");
+const Order = require("../models/order");
 const express = require("express");
 const Razorpay = require("razorpay");
 const products = require("../config/productCatalog");
